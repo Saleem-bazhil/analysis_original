@@ -1,0 +1,73 @@
+// 13-column Open Call schema
+export interface CallPlanRow {
+  month: string;         // Date string or blank
+  ticketNo: string;      // WO-XXXXXXXXX
+  caseId: string;
+  product: string;
+  wipAging: number;
+  location: string;
+  segment: string;
+  morningStatus: string;
+  eveningStatus: string;
+  currentStatusTAT: string;
+  engg: string;
+  contactNo: string;
+  parts: string;
+}
+
+export type WOClassification = 'PENDING' | 'NEW' | 'DROPPED';
+
+export interface ClassifiedRow extends CallPlanRow {
+  classification: WOClassification;
+}
+
+export interface FlexRow {
+  ticketNo: string;
+  caseId: string;
+  productName: string;
+  createTime: string;
+  aspCity: string;
+  workLocation: string;
+  woOtcCode: string;
+  businessSegment: string;
+  status: string;
+  customerPhoneNo: string;
+  customerCity: string;
+  customerAddress: string;
+  bookingResource: string;
+  wipAgingRaw: number;       // Pre-calculated WIP Aging from Flex XLSX (0 if absent)
+}
+
+export interface ProcessingResult {
+  pending: ClassifiedRow[];
+  new: ClassifiedRow[];
+  dropped: ClassifiedRow[];
+  all: ClassifiedRow[];
+  metrics: {
+    flexTotal: number;
+    flexFiltered: number;
+    yesterdayTotal: number;
+    pendingCount: number;
+    newCount: number;
+    droppedCount: number;
+    finalCount: number;
+  };
+}
+
+export type AppStep = 'upload' | 'review' | 'export';
+
+export const COLUMNS = [
+  'Month', 'Ticket No', 'Case Id', 'Product', 'WIP Aging',
+  'Location', 'Segment', 'Morning Status', 'Evening Status',
+  'Current Status-TAT', 'Engg.', 'Contact no.', 'Parts'
+] as const;
+
+export const MORNING_STATUS_OPTIONS = [
+  '', 'Actionable', 'Part Pending', 'CRT Pending', 'Cx pending',
+  'need to cancel', 'additional part', 'visit quote to Customer',
+  'request to cancel', 'Under observation', 'Visit Estimate', 'Manual Part'
+];
+
+export const DEFAULT_ENGINEERS = [
+  '', 'sriram', 'Lava', 'Thamarai', 'Praveen', 'sasikumar', 'naveen'
+];
