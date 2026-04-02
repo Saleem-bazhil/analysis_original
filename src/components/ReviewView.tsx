@@ -38,10 +38,11 @@ export default function ReviewView() {
 
   // Status Cards definition
   const metrics = [
-    { label: 'Total Flex Output', value: result.metrics.flexTotal, icon: RefreshCw, color: 'text-blue-400' },
+    { label: 'Total Plan Call', value: result.metrics.finalCount, icon: RefreshCw, color: 'text-blue-400' },
     { label: 'Pending (Carried)', value: result.metrics.pendingCount, icon: AlertCircle, color: 'text-amber-400' },
     { label: 'New Entries', value: result.metrics.newCount, icon: Sparkles, color: 'text-green-400' },
     { label: 'Dropped', value: result.metrics.droppedCount, icon: FileDown, color: 'text-red-400' },
+    { label: 'Total Flex WIP', value: result.metrics.flexTotal, icon: RefreshCw, color: 'text-gray-400' },
   ];
 
   const currentData = activeTab === 'all' ? rows :
@@ -79,7 +80,7 @@ export default function ReviewView() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {metrics.map((m, i) => (
           <div key={i} className="glass-panel p-5 rounded-xl flex items-center gap-4">
             <div className={`p-3 rounded-lg bg-gray-800/80 ${m.color.replace('text', 'bg').replace('400', '500/20')}`}>

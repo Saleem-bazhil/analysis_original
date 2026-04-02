@@ -68,14 +68,14 @@ function rowToArray(row: ClassifiedRow): (string | number)[] {
     row.location,
     row.segment,
     row.hpOwner,
-    row.statusCategory,
-    row.wipChanged,
+    row.flexStatus,
     row.morningStatus,
     row.eveningStatus,
     row.currentStatusTAT,
     row.engg,
     row.contactNo,
     row.parts,
+    row.wipChanged,
   ];
 }
 

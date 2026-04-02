@@ -8,7 +8,7 @@ export interface CallPlanRow {
   location: string;
   segment: string;
   hpOwner: string;           // HP Owner from Flex WIP
-  statusCategory: string;    // Status Category from Flex WIP
+  flexStatus: string;        // Status from Flex WIP
   wipChanged: string;        // WIP changed from morning report (Yes/No/New)
   morningStatus: string;
   eveningStatus: string;
@@ -40,7 +40,7 @@ export interface FlexRow {
   bookingResource: string;
   wipAgingRaw: number;       // Pre-calculated WIP Aging from Flex XLSX (0 if absent)
   hpOwner: string;           // HP Owner
-  statusCategory: string;    // Status Category
+  flexStatus: string;    // Status from Flex WIP
 }
 
 export interface ProcessingResult {
@@ -63,9 +63,9 @@ export type AppStep = 'upload' | 'review' | 'export';
 
 export const COLUMNS = [
   'Month', 'Ticket No', 'Case Id', 'Product', 'WIP Aging',
-  'Location', 'Segment', 'HP Owner', 'Status Category', 'WIP Changed',
+  'Location', 'Segment', 'HP Owner', 'Flex Status', 
   'Morning Report', 'Evening Report',
-  'Current Status-TAT', 'Engg.', 'Contact no.', 'Parts'
+  'Current Status-TAT', 'Engg.', 'Contact no.', 'Parts', 'WIP Changed'
 ] as const;
 
 export const MORNING_STATUS_OPTIONS = [

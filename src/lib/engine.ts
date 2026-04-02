@@ -77,7 +77,7 @@ export function normalizeFlexRow(raw: Record<string, unknown>): FlexRow {
     bookingResource: String(raw['Booking Resource'] ?? '').trim(),
     wipAgingRaw,
     hpOwner: String(raw['HP Owner'] ?? '').trim(),
-    statusCategory: String(raw['Status Category'] ?? '').trim(),
+    flexStatus: String(raw['Status'] ?? '').trim(),
   };
 }
 
@@ -100,7 +100,7 @@ export function normalizeCallPlanRow(raw: Record<string, unknown>): CallPlanRow 
     location: String(raw['Location'] ?? '').trim(),
     segment: String(raw['Segment'] ?? '').trim(),
     hpOwner: String(raw['HP Owner'] ?? '').trim(),
-    statusCategory: String(raw['Status Category'] ?? '').trim(),
+    flexStatus: String(raw['Flex Status'] ?? raw['Status Category'] ?? raw['Status'] ?? '').trim(),
     wipChanged: String(raw['WIP Changed'] ?? '').trim(),
     morningStatus: String(raw['Morning Report'] ?? raw['Morning Status'] ?? '').trim(),
     eveningStatus: String(raw['Evening Report'] ?? raw['Evening Status'] ?? '').trim(),
@@ -162,14 +162,14 @@ export function processCallPlan(
     if (yesterday) {
       // PENDING: carry from yesterday, use WIP Aging from Flex WIP, clear evening status
       // Update HP Owner & Status Category from latest Flex, detect WIP change
-      const wipChanged = (yesterday.statusCategory !== flexRow.statusCategory)
+      const wipChanged = (yesterday.flexStatus !== flexRow.flexStatus)
         ? 'Yes' : 'No';
       pending.push({
         ...yesterday,
         wipAging: flexRow.wipAgingRaw,
         eveningStatus: '',
         hpOwner: flexRow.hpOwner,
-        statusCategory: flexRow.statusCategory,
+        flexStatus: flexRow.flexStatus,
         wipChanged,
         classification: 'PENDING',
       });
@@ -203,7 +203,7 @@ export function processCallPlan(
         location,
         segment: mapSegment(flexRow.woOtcCode, flexRow.businessSegment),
         hpOwner: flexRow.hpOwner,
-        statusCategory: flexRow.statusCategory,
+        flexStatus: flexRow.flexStatus,
         wipChanged: 'New',
         morningStatus: '',
         eveningStatus: '',
