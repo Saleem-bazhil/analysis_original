@@ -76,6 +76,8 @@ export function normalizeFlexRow(raw: Record<string, unknown>): FlexRow {
     customerAddress: address,
     bookingResource: String(raw['Booking Resource'] ?? '').trim(),
     wipAgingRaw,
+    hpOwner: String(raw['HP Owner'] ?? '').trim(),
+    statusCategory: String(raw['Status Category'] ?? '').trim(),
   };
 }
 
@@ -97,8 +99,11 @@ export function normalizeCallPlanRow(raw: Record<string, unknown>): CallPlanRow 
     wipAging: parseInt(String(raw['WIP Aging'] ?? '0'), 10) || 0,
     location: String(raw['Location'] ?? '').trim(),
     segment: String(raw['Segment'] ?? '').trim(),
-    morningStatus: String(raw['Morning Status'] ?? '').trim(),
-    eveningStatus: String(raw['Evening Status'] ?? '').trim(),
+    hpOwner: String(raw['HP Owner'] ?? '').trim(),
+    statusCategory: String(raw['Status Category'] ?? '').trim(),
+    wipChanged: String(raw['WIP Changed'] ?? '').trim(),
+    morningStatus: String(raw['Morning Report'] ?? raw['Morning Status'] ?? '').trim(),
+    eveningStatus: String(raw['Evening Report'] ?? raw['Evening Status'] ?? '').trim(),
     currentStatusTAT: String(raw['Current Status-TAT'] ?? '').trim(),
     engg: String(raw['Engg.'] ?? '').trim(),
     contactNo: String(raw['Contact no.'] ?? '').trim(),
@@ -155,11 +160,17 @@ export function processCallPlan(
   for (const [ticketNo, flexRow] of flexMap) {
     const yesterday = rtplMap.get(ticketNo);
     if (yesterday) {
-      // PENDING: carry from yesterday, aging +1, clear evening status
+      // PENDING: carry from yesterday, use WIP Aging from Flex WIP, clear evening status
+      // Update HP Owner & Status Category from latest Flex, detect WIP change
+      const wipChanged = (yesterday.statusCategory !== flexRow.statusCategory)
+        ? 'Yes' : 'No';
       pending.push({
         ...yesterday,
-        wipAging: yesterday.wipAging + 1,
+        wipAging: flexRow.wipAgingRaw,
         eveningStatus: '',
+        hpOwner: flexRow.hpOwner,
+        statusCategory: flexRow.statusCategory,
+        wipChanged,
         classification: 'PENDING',
       });
     } else {
@@ -191,6 +202,9 @@ export function processCallPlan(
         wipAging: aging,
         location,
         segment: mapSegment(flexRow.woOtcCode, flexRow.businessSegment),
+        hpOwner: flexRow.hpOwner,
+        statusCategory: flexRow.statusCategory,
+        wipChanged: 'New',
         morningStatus: '',
         eveningStatus: '',
         currentStatusTAT,
@@ -247,19 +261,20 @@ export function buildSummaryRows(rows: ClassifiedRow[]): string[][] {
     }
   }
 
+  const colCount = 16; // Updated from 13 to 16 columns
   const summaryLines: string[][] = [];
   // 4 empty rows
-  for (let i = 0; i < 4; i++) summaryLines.push(new Array(13).fill(''));
+  for (let i = 0; i < 4; i++) summaryLines.push(new Array(colCount).fill(''));
 
   // Actionable count in Location column (index 5)
-  const actionRow = new Array(13).fill('');
+  const actionRow = new Array(colCount).fill('');
   actionRow[5] = `Actionable-${actionableCount}`;
   summaryLines.push(actionRow);
 
   // Engineer counts sorted descending
   const sorted = [...engCounts.entries()].sort((a, b) => b[1] - a[1]);
   for (const [eng, count] of sorted) {
-    const engRow = new Array(13).fill('');
+    const engRow = new Array(colCount).fill('');
     engRow[5] = `${eng}-${count}`;
     summaryLines.push(engRow);
   }

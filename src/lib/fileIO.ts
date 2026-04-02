@@ -67,6 +67,9 @@ function rowToArray(row: ClassifiedRow): (string | number)[] {
     row.wipAging,
     row.location,
     row.segment,
+    row.hpOwner,
+    row.statusCategory,
+    row.wipChanged,
     row.morningStatus,
     row.eveningStatus,
     row.currentStatusTAT,
@@ -93,10 +96,11 @@ export function exportXLSX(
   const sheetData = [header, ...dataRows, ...summaryRows];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-  // Set column widths
+  // Set column widths (16 columns)
   ws['!cols'] = [
     { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 35 }, { wch: 10 },
-    { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 18 },
+    { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
+    { wch: 18 }, { wch: 18 },
     { wch: 28 }, { wch: 12 }, { wch: 14 }, { wch: 20 },
   ];
   XLSX.utils.book_append_sheet(wb, ws, 'Open Call');
