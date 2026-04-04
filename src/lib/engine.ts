@@ -231,6 +231,26 @@ export function processCallPlan(
 
   const all = [...pending, ...newRows];
 
+  // STEP 6: Calculate advanced metrics
+  let tradeCount = 0;
+  let actionableCount = 0;
+  let toScheduleCount = 0;
+  let sscPendingCount = 0;
+  let techSupportCount = 0;
+  let toYankCount = 0;
+  const enggSet = new Set<string>();
+
+  for (const row of all) {
+    if (row.segment.toLowerCase() === 'trade') tradeCount++;
+    const ms = row.morningStatus.toLowerCase();
+    if (ms === 'actionable') actionableCount++;
+    if (ms === 'to be scheduled') toScheduleCount++;
+    if (ms === 'ssc pending') sscPendingCount++;
+    if (ms === 'elevate/tech support') techSupportCount++;
+    if (ms === 'to be yank') toYankCount++;
+    if (row.engg && row.engg.trim() !== '') enggSet.add(row.engg.trim());
+  }
+
   return {
     pending,
     new: newRows,
@@ -244,40 +264,83 @@ export function processCallPlan(
       newCount: newRows.length,
       droppedCount: dropped.length,
       finalCount: all.length,
+      tradeCount,
+      actionableCount,
+      toScheduleCount,
+      sscPendingCount,
+      techSupportCount,
+      toYankCount,
+      enggPresentCount: enggSet.size,
     },
   };
 }
 
-// ── Build summary rows ──
-export function buildSummaryRows(rows: ClassifiedRow[]): string[][] {
+// ── Build summary table for Excel (matching the user's 18-metric image) ──
+export function buildSummaryTable(rows: ClassifiedRow[], engineersCount: number): string[][] {
   const outputRows = rows.filter(r => r.classification !== 'DROPPED');
-  let actionableCount = 0;
+  
+  // Calculate all 18 metrics (consistent with ReviewView logic)
+  const enggPresentCount = new Set(outputRows.map(r => r.engg).filter(e => e && e.trim() !== '')).size;
+  const openCallsCount = outputRows.length;
+  const actionableCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'actionable').length;
+  const plannedCallsCount = outputRows.filter(r => r.engg && r.engg.trim() !== '').length;
+  const closedCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'closed').length;
+  const enggOnsiteCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'engg onsite').length;
+  const toScheduleCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'to be scheduled').length;
+  const cxRescheduleCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'cx reschedule' || r.morningStatus.toLowerCase() === 'cx pending').length;
+  const sscPendingCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'ssc pending').length;
+  const techSupportCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'elevate/tech support').length;
+  const observationCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'under observation').length;
+  const toYankCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'to be yank').length;
+  const closedCancelledCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'closed cancelled').length;
+  const partOrderedCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'additional part').length;
+  const toCancelCount = outputRows.filter(r => r.morningStatus.toLowerCase().includes('cancel') && r.morningStatus.toLowerCase() !== 'closed cancelled').length;
+  const newCallsCount = outputRows.filter(r => r.classification === 'NEW').length;
+  const tradeCount = outputRows.filter(r => r.segment.toLowerCase() === 'trade').length;
+
+  const table: string[][] = [
+    ['S.No', 'Description', 'Count'],
+    ['1', 'Engineer Count', String(engineersCount)],
+    ['2', 'No.of Engg Presents', String(enggPresentCount)],
+    ['3', 'Open Calls', String(openCallsCount)],
+    ['4', 'Actionable Calls', String(actionableCount)],
+    ['5', 'Planned Calls', String(plannedCallsCount)],
+    ['6', 'Closed Calls', String(closedCount > 0 ? closedCount : '')],
+    ['7', 'Engg onsite', String(enggOnsiteCount > 0 ? enggOnsiteCount : '')],
+    ['8', 'To be schedule', String(toScheduleCount)],
+    ['9', 'CX Reschedule Calls', String(cxRescheduleCount > 0 ? cxRescheduleCount : '')],
+    ['10', 'SSC Pending Calls', String(sscPendingCount)],
+    ['11', 'Elevate/Tech Support Calls', String(techSupportCount)],
+    ['12', 'Under observation Calls', String(observationCount > 0 ? observationCount : '')],
+    ['13', 'To be Yank', String(toYankCount)],
+    ['14', 'Closed cancelled', String(closedCancelledCount > 0 ? closedCancelledCount : '')],
+    ['15', 'Add.Part ordered', String(partOrderedCount > 0 ? partOrderedCount : '')],
+    ['16', 'To be Cancel', String(toCancelCount)],
+    ['17', 'New calls', String(newCallsCount > 0 ? newCallsCount : '')],
+    ['18', 'Trade Open Calls', String(tradeCount)],
+  ];
+
+  return table;
+}
+
+// ── Build engineer breakdown for Excel ──
+export function buildEngineerBreakdown(rows: ClassifiedRow[]): string[][] {
+  const outputRows = rows.filter(r => r.classification !== 'DROPPED');
   const engCounts = new Map<string, number>();
 
   for (const row of outputRows) {
-    if (row.morningStatus.toLowerCase() === 'actionable') actionableCount++;
     if (row.engg) {
-      engCounts.set(row.engg, (engCounts.get(row.engg) ?? 0) + 1);
+      engCounts.set(row.engg.trim(), (engCounts.get(row.engg.trim()) ?? 0) + 1);
     }
   }
 
-  const colCount = 16; // Updated from 13 to 16 columns
-  const summaryLines: string[][] = [];
-  // 4 empty rows
-  for (let i = 0; i < 4; i++) summaryLines.push(new Array(colCount).fill(''));
-
-  // Actionable count in Location column (index 5)
-  const actionRow = new Array(colCount).fill('');
-  actionRow[5] = `Actionable-${actionableCount}`;
-  summaryLines.push(actionRow);
-
-  // Engineer counts sorted descending
   const sorted = [...engCounts.entries()].sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) return [];
+
+  const result: string[][] = [['Engineer', 'Allocated Calls']];
   for (const [eng, count] of sorted) {
-    const engRow = new Array(colCount).fill('');
-    engRow[5] = `${eng}-${count}`;
-    summaryLines.push(engRow);
+    result.push([eng, String(count)]);
   }
 
-  return summaryLines;
+  return result;
 }

@@ -56,6 +56,13 @@ export interface ProcessingResult {
     newCount: number;
     droppedCount: number;
     finalCount: number;
+    tradeCount: number;
+    actionableCount: number;
+    toScheduleCount: number;
+    sscPendingCount: number;
+    techSupportCount: number;
+    toYankCount: number;
+    enggPresentCount: number;
   };
 }
 
@@ -69,9 +76,26 @@ export const COLUMNS = [
 ] as const;
 
 export const MORNING_STATUS_OPTIONS = [
-  '', 'Actionable', 'Part Pending', 'CRT Pending', 'Cx pending',
-  'need to cancel', 'additional part', 'visit quote to Customer',
-  'request to cancel', 'Under observation', 'Visit Estimate', 'Manual Part'
+  '',
+  'Actionable',
+  'Engg onsite',
+  'To be scheduled',
+  'CX Reschedule',
+  'SSC Pending',
+  'Elevate/Tech Support',
+  'Under observation',
+  'to be yank',
+  'Closed',
+  'Closed cancelled',
+  'additional part',
+  'request to cancel',
+  'need to cancel',
+  'Part Pending',
+  'CRT Pending',
+  'Cx pending',
+  'visit quote to Customer',
+  'Visit Estimate',
+  'Manual Part',
 ];
 
 export const DEFAULT_ENGINEERS = [

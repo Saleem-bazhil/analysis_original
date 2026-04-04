@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import type { ClassifiedRow } from './types';
 import { COLUMNS } from './types';
-import { buildSummaryRows } from './engine';
+import { buildSummaryTable, buildEngineerBreakdown } from './engine';
 
 // ── Parse CSV (latin-1 safe via FileReader) ──
 export function parseCSV(file: File): Promise<Record<string, unknown>[]> {
@@ -79,8 +79,30 @@ function rowToArray(row: ClassifiedRow): (string | number)[] {
   ];
 }
 
-// ── Export to XLSX ──
-export function exportXLSX(
+// ── Export Summary to XLSX (Only the 18-metric table) ──
+export function exportSummaryXLSX(
+  rows: ClassifiedRow[],
+  engineersCount: number,
+  city: string,
+  dateStr: string
+) {
+  const wb = XLSX.utils.book_new();
+  const summaryData = buildSummaryTable(rows, engineersCount);
+  const engBreakdown = buildEngineerBreakdown(rows);
+  
+  const finalSummaryData = [...summaryData, [], [], ...engBreakdown];
+  const wsSummary = XLSX.utils.aoa_to_sheet(finalSummaryData);
+  
+  wsSummary['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 15 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  const filename = `${city}_${dateStr}_Summary_Counts.xlsx`;
+  XLSX.writeFile(wb, filename);
+  return filename;
+}
+
+// ── Export Call Plan to XLSX (Main Data & Closed OTB) ──
+export function exportCallPlanXLSX(
   rows: ClassifiedRow[],
   dropped: ClassifiedRow[],
   city: string,
@@ -88,29 +110,26 @@ export function exportXLSX(
 ) {
   const wb = XLSX.utils.book_new();
 
-  // Open Call sheet
+  // 1. Open Call sheet
   const outputRows = rows.filter(r => r.classification !== 'DROPPED');
   const header = [...COLUMNS];
   const dataRows = outputRows.map(rowToArray);
-  const summaryRows = buildSummaryRows(rows);
-  const sheetData = [header, ...dataRows, ...summaryRows];
-  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const wsOpen = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
 
-  // Set column widths (16 columns)
-  ws['!cols'] = [
+  wsOpen['!cols'] = [
     { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 35 }, { wch: 10 },
     { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
     { wch: 18 }, { wch: 18 },
     { wch: 28 }, { wch: 12 }, { wch: 14 }, { wch: 20 },
   ];
-  XLSX.utils.book_append_sheet(wb, ws, 'Open Call');
+  XLSX.utils.book_append_sheet(wb, wsOpen, 'Open Call');
 
-  // Dropped sheet
+  // 2. Dropped sheet
   if (dropped.length > 0) {
     const droppedData = [header, ...dropped.map(rowToArray)];
     const ws2 = XLSX.utils.aoa_to_sheet(droppedData);
-    ws2['!cols'] = ws['!cols'];
-    XLSX.utils.book_append_sheet(wb, ws2, 'Dropped');
+    ws2['!cols'] = wsOpen['!cols'];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Closed(OTB)');
   }
 
   const filename = `${city}_${dateStr}_Call_Plan.xlsx`;

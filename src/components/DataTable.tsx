@@ -30,8 +30,8 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
   };
 
   const handleChange = (
-    ticketNo: string, 
-    field: keyof ClassifiedRow, 
+    ticketNo: string,
+    field: keyof ClassifiedRow,
     value: string
   ) => {
     updateRow(ticketNo, field, value);
@@ -55,22 +55,22 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
               <td className="px-4 py-3 font-semibold text-xs tracking-wider">
                 {row.classification === 'PENDING' && <span className="text-amber-500">PENDING</span>}
                 {row.classification === 'NEW' && <span className="text-green-500">NEW</span>}
-                {row.classification === 'DROPPED' && <span className="text-red-500">DROPPED</span>}
+                {row.classification === 'DROPPED' && <span className="text-red-500">CLOSED(OTB)</span>}
               </td>
-              
+
               <td className="px-4 py-3 text-gray-400">{row.month || '-'}</td>
               <td className="px-4 py-3 font-mono text-gray-200">{row.ticketNo}</td>
               <td className="px-4 py-3 text-gray-300">{row.caseId}</td>
               <td className="px-4 py-3 truncate max-w-[200px]" title={row.product}>{row.product}</td>
-              
+
               <td className="px-4 py-3 text-center">
                 <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${row.wipAging > 5 ? 'bg-red-500/20 text-red-400' : 'bg-gray-700/50 text-gray-300'}`}>
                   {row.wipAging}
                 </span>
               </td>
-              
+
               <td className="px-2 py-2">
-                <input 
+                <input
                   type="text"
                   value={row.location}
                   onChange={(e) => handleChange(row.ticketNo, 'location', e.target.value)}
@@ -79,7 +79,7 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
                   className="w-full bg-transparent border border-transparent hover:border-gray-600 focus:border-blue-500 focus:bg-gray-900 px-2 py-1 rounded transition-all disabled:opacity-50"
                 />
               </td>
-              
+
               <td className="px-4 py-3 text-blue-400 font-medium">{row.segment}</td>
 
               <td className="px-4 py-3 text-gray-300">{row.hpOwner || '-'}</td>
@@ -103,11 +103,11 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
                   )}
                 </select>
               </td>
-              
+
               <td className="px-4 py-3 text-gray-500 italic">{row.eveningStatus || '-'}</td>
-              
+
               <td className="px-2 py-2">
-                <input 
+                <input
                   type="text"
                   value={row.currentStatusTAT}
                   onChange={(e) => handleChange(row.ticketNo, 'currentStatusTAT', e.target.value)}
@@ -115,9 +115,9 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
                   className="w-full min-w-[150px] bg-transparent border border-transparent hover:border-gray-600 focus:border-blue-500 focus:bg-gray-900 px-2 py-1 rounded transition-all disabled:opacity-50 text-xs"
                 />
               </td>
-              
+
               <td className="px-2 py-2">
-                <select 
+                <select
                   value={row.engg}
                   onChange={(e) => handleChange(row.ticketNo, 'engg', e.target.value)}
                   disabled={isDroppedTab}
@@ -134,11 +134,11 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
                   )}
                 </select>
               </td>
-              
+
               <td className="px-4 py-3 text-gray-300 font-mono text-xs">{row.contactNo}</td>
-              
+
               <td className="px-2 py-2">
-                <input 
+                <input
                   type="text"
                   value={row.parts}
                   onChange={(e) => handleChange(row.ticketNo, 'parts', e.target.value)}
@@ -149,11 +149,10 @@ export default function DataTable({ data, isDroppedTab }: DataTableProps) {
               </td>
 
               <td className="px-4 py-3 text-center">
-                <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
-                  row.wipChanged === 'Yes' ? 'bg-orange-500/20 text-orange-400' :
-                  row.wipChanged === 'New' ? 'bg-green-500/20 text-green-400' :
-                  'bg-gray-700/50 text-gray-400'
-                }`}>
+                <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${row.wipChanged === 'Yes' ? 'bg-orange-500/20 text-orange-400' :
+                    row.wipChanged === 'New' ? 'bg-green-500/20 text-green-400' :
+                      'bg-gray-700/50 text-gray-400'
+                  }`}>
                   {row.wipChanged || '-'}
                 </span>
               </td>
