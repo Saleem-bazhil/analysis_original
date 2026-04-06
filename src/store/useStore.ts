@@ -1,11 +1,16 @@
 import { create } from 'zustand';
 import type { AppStep, ClassifiedRow, ProcessingResult } from '../lib/types';
 import { DEFAULT_ENGINEERS } from '../lib/types';
+import { isValidWO } from '../lib/engine';
 
 interface AppState {
   // Navigation
   step: AppStep;
   setStep: (step: AppStep) => void;
+
+  // Auth state
+  isLoggedIn: boolean;
+  setLoggedIn: (isLoggedIn: boolean) => void;
 
   // Upload state
   flexData: Record<string, unknown>[] | null;
@@ -27,6 +32,7 @@ interface AppState {
   droppedRows: ClassifiedRow[];
   setRows: (rows: ClassifiedRow[]) => void;
   setDroppedRows: (rows: ClassifiedRow[]) => void;
+  addRow: (row: ClassifiedRow) => void;
   updateRow: (ticketNo: string, field: keyof ClassifiedRow, value: string | number) => void;
 
   // Active tab in review
@@ -44,8 +50,11 @@ interface AppState {
 const today = new Date().toISOString().split('T')[0];
 
 export const useStore = create<AppState>((set) => ({
-  step: 'upload',
+  step: 'login',
   setStep: (step) => set({ step }),
+
+  isLoggedIn: false,
+  setLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
 
   flexData: null,
   yesterdayData: null,
@@ -54,8 +63,8 @@ export const useStore = create<AppState>((set) => ({
   reportDate: today,
   setFlexData: (data, cities) => set({
     flexData: data,
-    availableCities: cities,
-    selectedCity: cities.includes('Chennai') ? 'Chennai' : cities[0] ?? 'Chennai',
+    availableCities: cities.length > 0 ? ['all', ...cities] : [],
+    selectedCity: 'all',
   }),
   setYesterdayData: (data) => set({ yesterdayData: data }),
   setSelectedCity: (city) => set({ selectedCity: city }),
@@ -68,12 +77,31 @@ export const useStore = create<AppState>((set) => ({
   droppedRows: [],
   setRows: (rows) => set({ rows }),
   setDroppedRows: (rows) => set({ droppedRows: rows }),
+  
+  addRow: (row) => set((state) => {
+    const trimmedWO = row.ticketNo.trim().toUpperCase();
+    if (!isValidWO(trimmedWO)) {
+       alert('Invalid Work Order Format (Expected: WO-XXXXXXXXX)');
+       return state;
+    }
+    const exists = state.rows.some(r => r.ticketNo.trim().toUpperCase() === trimmedWO);
+    if (exists) {
+      alert(`Work Order ${trimmedWO} already exists in the table.`);
+      return state;
+    }
+    return { rows: [row, ...state.rows] };
+  }),
+
   updateRow: (ticketNo, field, value) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.ticketNo === ticketNo ? { ...r, [field]: value } : r
-      ),
-    })),
+    set((state) => {
+      const up = (r: ClassifiedRow) => 
+        r.ticketNo.trim().toUpperCase() === ticketNo.trim().toUpperCase() ? { ...r, [field]: value } : r;
+      
+      return {
+        rows: state.rows.map(up),
+        droppedRows: state.droppedRows.map(up)
+      };
+    }),
 
   activeTab: 'all',
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -83,11 +111,11 @@ export const useStore = create<AppState>((set) => ({
 
   reset: () =>
     set({
-      step: 'upload',
+      step: 'review',
       flexData: null,
       yesterdayData: null,
       availableCities: [],
-      selectedCity: 'Chennai',
+      selectedCity: 'all',
       reportDate: today,
       result: null,
       rows: [],

@@ -46,8 +46,21 @@
     @apply bg-gray-900/50 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm outline-none px-3 py-2 rounded-md;
   }
 
+
   .interactive-cell {
     @apply hover:bg-gray-800/50 transition-colors duration-200 cursor-pointer;
+  }
+
+  .animate-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    transform: translate3d(0, 0, 0);
+  }
+
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
   }
 }
 
@@ -55,3 +68,4 @@
 input[type="text"], input[type="date"], select {
   color-scheme: dark;
 }
+

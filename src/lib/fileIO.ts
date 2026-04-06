@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import type { ClassifiedRow } from './types';
 import { COLUMNS } from './types';
-import { buildSummaryTable, buildEngineerBreakdown } from './engine';
+import { buildSummaryTable, buildEngineerBreakdown, findCol } from './engine';
 
 // ── Parse CSV (latin-1 safe via FileReader) ──
 export function parseCSV(file: File): Promise<Record<string, unknown>[]> {
@@ -44,14 +44,21 @@ export function parseXLSX(file: File): Promise<{
 
 // ── Find "Open Call" sheet (case-insensitive) ──
 export function findOpenCallSheet(sheets: string[]): string | null {
-  return sheets.find(s => s.toLowerCase() === 'open call') ?? sheets[0] ?? null;
+  const patterns = ['open call', 'opencall', 'data', 'summary', 'report'];
+  for (const p of patterns) {
+    const found = sheets.find(s => s.toLowerCase().includes(p));
+    if (found) return found;
+  }
+  return sheets[0] ?? null;
 }
 
 // ── Detect ASP cities from Flex data ──
 export function detectCities(data: Record<string, unknown>[]): string[] {
   const cities = new Set<string>();
+  const cityAliases = ['ASP City', 'ASPCity', 'City', 'Location', 'Branch'];
+  
   for (const row of data) {
-    const city = String(row['ASP City'] ?? '').trim();
+    const city = findCol(row, cityAliases);
     if (city) cities.add(city);
   }
   return [...cities].sort();

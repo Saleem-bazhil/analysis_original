@@ -1,11 +1,28 @@
 import type { FlexRow, CallPlanRow, ClassifiedRow, ProcessingResult } from './types';
 
+// ── Smart Column Finder (Fuzzy/Case-insensitive) ──
+export function findCol(raw: Record<string, unknown>, aliases: string[]): string {
+  const keys = Object.keys(raw);
+  const normalizedAliases = aliases.map(a => a.toLowerCase().replace(/\s+/g, ''));
+  
+  for (const key of keys) {
+    const normKey = key.toLowerCase().replace(/\s+/g, '');
+    if (normalizedAliases.includes(normKey)) {
+      return String(raw[key] ?? '').trim();
+    }
+  }
+  return '';
+}
+
 // ── Phone number cleanup ──
 export function cleanPhone(raw: unknown): string {
   let s = String(raw ?? '').trim();
   s = s.replace(/\.0$/, '');
   s = s.replace(/\D/g, '');
+  // Remove 91 prefix if exactly 12 digits
   if (s.length === 12 && s.startsWith('91')) s = s.slice(2);
+  // Keep only last 10 digits if longer
+  if (s.length > 10) s = s.slice(-10);
   return s;
 }
 
@@ -13,7 +30,8 @@ export function cleanPhone(raw: unknown): string {
 export function parseFlexDate(raw: string): Date | null {
   if (!raw) return null;
   try {
-    const cleaned = raw.replace(' UTC', '');
+    const cleaned = raw.replace(' UTC', '').trim();
+    if (!cleaned) return null;
     const d = new Date(cleaned);
     return isNaN(d.getTime()) ? null : d;
   } catch {
@@ -29,97 +47,122 @@ export function mapSegment(otcCode: string, bizSegment: string): string {
   const seg = (bizSegment ?? '').toLowerCase();
   if (seg === 'computing') return 'Pc';
   if (seg === 'printing') return 'print';
-  return bizSegment || '';
+  if (seg.includes('consumer')) return 'Consumer';
+  if (seg.includes('corporate')) return 'Corporate';
+  return bizSegment || 'Trade';
 }
 
-// ── WIP Aging calculation for NEW rows ──
+// ── WIP Aging calculation ──
 export function calcAging(createTime: string, reportDate: Date): number {
   const created = parseFlexDate(createTime);
   if (!created) return 0;
   const diff = reportDate.getTime() - created.getTime();
-  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return Math.max(0, days);
 }
 
-// ── WO ID validation ──
-const WO_PATTERN = /^WO-\d{9}$/;
+// ── Strict Validation (Now more lenient) ──
 export function isValidWO(id: string): boolean {
-  return WO_PATTERN.test((id ?? '').trim());
+  const trimmed = (id ?? '').trim().toUpperCase();
+  // Valid if: WO-XXXXXXXXX OR just XXXXXXXXX (9 digits)
+  return /^WO-\d{9}$/i.test(trimmed) || /^\d{9}$/.test(trimmed);
+}
+
+export function isValidCase(id: string): boolean {
+  const trimmed = (id ?? '').trim();
+  return /^\d{8,10}$/.test(trimmed) || trimmed.length > 4; // Case IDs are usually 8-10 digits
 }
 
 // ── Normalize raw flex data into typed rows ──
-// Handles BOTH CSV format (with "Customer Phone No", "Create Time")
-// AND XLSX format (with "WIP Aging", "Customer Address " trailing space, no phone)
 export function normalizeFlexRow(raw: Record<string, unknown>): FlexRow {
-  // Phone: try "Customer Phone No" (CSV), fall back to nothing (XLSX doesn't have it)
-  const phone = String(raw['Customer Phone No'] ?? '').trim();
+  let ticketNo = findCol(raw, ['Ticket No', 'TicketNo', 'WorkOrder', 'WO', 'Work Order', 'Service Order']);
+  
+  // Auto-prepend WO- if it's just 9 digits
+  if (/^\d{9}$/.test(ticketNo)) {
+    ticketNo = `WO-${ticketNo}`;
+  }
 
-  // Address: try "Customer Address" then "Customer Address " (trailing space in XLSX)
-  const address = String(
-    raw['Customer Address'] ?? raw['Customer Address '] ?? ''
-  ).trim();
-
-  // WIP Aging: some XLSX sources have this pre-calculated
-  const wipAgingRaw = parseInt(String(raw['WIP Aging'] ?? '0'), 10) || 0;
+  const caseId = findCol(raw, ['Case Id', 'CaseId', 'Case', 'Incident']);
+  const product = findCol(raw, ['Product Name', 'ProductName', 'Product', 'Model', 'Machine']);
+  const city = findCol(raw, ['ASP City', 'ASPCity', 'City', 'Location', 'Branch']);
+  const otc = findCol(raw, ['WO OTC Code', 'Wo otc code', 'OTCCode', 'OTC', 'OTC Code']);
+  const status = findCol(raw, ['Status', 'Flex Status', 'FlexStatus', 'Job Status']);
+  const phone = findCol(raw, ['Customer Phone No', 'Phone', 'Contact', 'Mobile']);
+  const hpOwner = findCol(raw, ['HP Owner', 'HPOwner', 'Owner', 'HP Contact']);
+  const address = findCol(raw, ['Customer Address', 'Address', 'Customer Address ']);
+  const location = findCol(raw, ['Work Location', 'WorkLocation', 'Area', 'Sub-Area']);
+  const segment = findCol(raw, ['Business Segment', 'BusinessSegment', 'Segment', 'Biz Segment']);
+  const createTime = findCol(raw, ['Create Time', 'CreateTime', 'CreatedDate', 'Creation Date']);
+  
+  // Handle WIP Aging (can be direct number or calculated)
+  let wipAgingRaw = 0;
+  const agingVal = findCol(raw, ['WIP Aging', 'WIPAging', 'Aging', 'WIPDays']);
+  if (agingVal) wipAgingRaw = parseInt(agingVal, 10) || 0;
 
   return {
-    ticketNo: String(raw['Ticket No'] ?? '').trim(),
-    caseId: String(raw['Case Id'] ?? '').trim(),
-    productName: String(raw['Product Name'] ?? '').trim(),
-    createTime: String(raw['Create Time'] ?? '').trim(),
-    aspCity: String(raw['ASP City'] ?? '').trim(),
-    workLocation: String(raw['Work Location'] ?? '').trim(),
-    woOtcCode: String(raw['WO OTC Code'] ?? '').trim(),
-    businessSegment: String(raw['Business Segment'] ?? '').trim(),
-    status: String(raw['Status'] ?? '').trim(),
+    ticketNo,
+    caseId,
+    productName: product,
+    createTime,
+    aspCity: city,
+    workLocation: location,
+    woOtcCode: otc,
+    businessSegment: segment,
+    status: status,
     customerPhoneNo: phone,
-    customerCity: String(raw['Customer City'] ?? '').trim(),
+    customerCity: city,
     customerAddress: address,
-    bookingResource: String(raw['Booking Resource'] ?? '').trim(),
+    bookingResource: findCol(raw, ['Booking Resource', 'BookingResource']),
     wipAgingRaw,
-    hpOwner: String(raw['HP Owner'] ?? '').trim(),
-    flexStatus: String(raw['Status'] ?? '').trim(),
+    hpOwner,
+    flexStatus: status,
   };
 }
 
 // ── Normalize yesterday's call plan row ──
 export function normalizeCallPlanRow(raw: Record<string, unknown>): CallPlanRow {
-  const monthVal = raw['Month'];
+  const ticketNo = findCol(raw, ['Ticket No', 'TicketNo', 'WO']);
+  const monthVal = raw['Month'] || raw['month'];
   let monthStr = '';
+  
   if (monthVal instanceof Date) {
-    monthStr = monthVal.toLocaleDateString('en-GB');
+    monthStr = monthVal.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(' ', '-');
   } else if (monthVal != null && String(monthVal).trim() !== '' && String(monthVal) !== 'NaT') {
     monthStr = String(monthVal).trim();
   }
 
   return {
     month: monthStr,
-    ticketNo: String(raw['Ticket No'] ?? '').trim(),
-    caseId: String(raw['Case Id'] ?? '').trim(),
-    product: String(raw['Product'] ?? '').trim(),
-    wipAging: parseInt(String(raw['WIP Aging'] ?? '0'), 10) || 0,
-    location: String(raw['Location'] ?? '').trim(),
-    segment: String(raw['Segment'] ?? '').trim(),
-    hpOwner: String(raw['HP Owner'] ?? '').trim(),
-    flexStatus: String(raw['Flex Status'] ?? raw['Status Category'] ?? raw['Status'] ?? '').trim(),
-    wipChanged: String(raw['WIP Changed'] ?? '').trim(),
-    morningStatus: String(raw['Morning Report'] ?? raw['Morning Status'] ?? '').trim(),
-    eveningStatus: String(raw['Evening Report'] ?? raw['Evening Status'] ?? '').trim(),
-    currentStatusTAT: String(raw['Current Status-TAT'] ?? '').trim(),
-    engg: String(raw['Engg.'] ?? '').trim(),
-    contactNo: String(raw['Contact no.'] ?? '').trim(),
-    parts: String(raw['Parts'] ?? '').trim(),
+    ticketNo,
+    woOtcCode: findCol(raw, ['WO OTC Code', 'OTC', 'OTCCode']),
+    caseId: findCol(raw, ['Case Id', 'CaseId', 'Case']),
+    product: findCol(raw, ['Product', 'ProductName']),
+    wipAging: parseInt(String(raw['WIP Aging'] || raw['Aging'] || '0'), 10) || 0,
+    location: findCol(raw, ['Location', 'Area', 'WorkLocation']),
+    segment: findCol(raw, ['Segment', 'BusinessSegment']),
+    hpOwner: findCol(raw, ['HP Owner', 'Owner']),
+    flexStatus: findCol(raw, ['Flex Status', 'Status', 'Status Category']),
+    wipChanged: findCol(raw, ['WIP Changed', 'WIPChanged']),
+    morningStatus: findCol(raw, ['Morning Report', 'Morning Status', 'MorningReport']),
+    eveningStatus: findCol(raw, ['Evening Report', 'Evening Status', 'EveningReport']),
+    currentStatusTAT: findCol(raw, ['Current Status-TAT', 'TAT', 'Status-TAT']),
+    engg: findCol(raw, ['Engg.', 'Engineer', 'EngineerName']),
+    contactNo: findCol(raw, ['Contact no.', 'Phone', 'Contact']),
+    parts: findCol(raw, ['Parts', 'PartsInfo', 'PartRemarks']),
   };
 }
 
-// ── Detect if input is XLSX-format Flex (has WIP Aging column but no Create Time) ──
+// ── Detect format (Smart) ──
 function detectFlexFormat(flexRaw: Record<string, unknown>[]): 'csv' | 'xlsx' {
   if (flexRaw.length === 0) return 'csv';
   const sample = flexRaw[0];
-  const hasCreateTime = 'Create Time' in sample &&
-    String(sample['Create Time'] ?? '').trim().length > 0;
-  const hasWipAging = 'WIP Aging' in sample;
-  // XLSX format: has pre-computed WIP Aging but no Create Time string
-  if (hasWipAging && !hasCreateTime) return 'xlsx';
+  const keys = Object.keys(sample).map(k => k.toLowerCase().replace(/\s+/g, ''));
+  
+  // XLSX usually has 'wipaging' pre-calculated
+  if (keys.includes('wipaging')) return 'xlsx';
+  // CSV usually has 'createtime'
+  if (keys.includes('createtime')) return 'csv';
+  
   return 'csv';
 }
 
@@ -131,51 +174,57 @@ export function processCallPlan(
   reportDate: Date
 ): ProcessingResult {
   const format = detectFlexFormat(flexRaw);
+  const targetCity = city.trim().toLowerCase();
 
-  // STEP 1: Filter & deduplicate Flex
   const flexMap = new Map<string, FlexRow>();
   let flexTotal = 0;
   for (const raw of flexRaw) {
     flexTotal++;
     const row = normalizeFlexRow(raw);
     if (!isValidWO(row.ticketNo)) continue;
-    if (row.aspCity.toLowerCase() !== city.toLowerCase()) continue;
-    flexMap.set(row.ticketNo, row); // last occurrence wins
+    
+    // Strict but flexible city filtering
+    const rowCity = (row.aspCity || '').toLowerCase().trim();
+    const targetCityNorm = (targetCity || '').toLowerCase().trim();
+    const isAllCities = targetCityNorm === 'all' || targetCityNorm === '';
+    
+    if (!isAllCities && rowCity !== targetCityNorm && !rowCity.includes(targetCityNorm) && !targetCityNorm.includes(rowCity)) {
+        continue;
+    }
+    
+    flexMap.set(row.ticketNo.toUpperCase(), row);
   }
 
-  // STEP 2: Load yesterday's Open Call
   const rtplMap = new Map<string, CallPlanRow>();
   for (const raw of yesterdayRaw) {
     const row = normalizeCallPlanRow(raw);
     if (!isValidWO(row.ticketNo)) continue;
-    rtplMap.set(row.ticketNo, row);
+    rtplMap.set(row.ticketNo.toUpperCase(), row);
   }
 
-  // STEP 3 & 4: Classify and build output
   const pending: ClassifiedRow[] = [];
   const newRows: ClassifiedRow[] = [];
   const dropped: ClassifiedRow[] = [];
 
-  // Check each Flex WO
+  // Identify Pending and New
   for (const [ticketNo, flexRow] of flexMap) {
     const yesterday = rtplMap.get(ticketNo);
     if (yesterday) {
-      // PENDING: carry from yesterday, use WIP Aging from Flex WIP, clear evening status
-      // Update HP Owner & Status Category from latest Flex, detect WIP change
-      const wipChanged = (yesterday.flexStatus !== flexRow.flexStatus)
-        ? 'Yes' : 'No';
+      // Comparison logic for WIP Changed status
+      const wipChanged = (yesterday.flexStatus.toLowerCase() !== flexRow.flexStatus.toLowerCase()) ? 'Yes' : 'No';
+      
       pending.push({
         ...yesterday,
-        wipAging: flexRow.wipAgingRaw,
-        eveningStatus: '',
-        hpOwner: flexRow.hpOwner,
+        wipAging: flexRow.wipAgingRaw > 0 ? flexRow.wipAgingRaw : yesterday.wipAging,
+        eveningStatus: '', // Clear evening status for the new day
+        hpOwner: flexRow.hpOwner || yesterday.hpOwner,
         flexStatus: flexRow.flexStatus,
         wipChanged,
         classification: 'PENDING',
+        woOtcCode: flexRow.woOtcCode || yesterday.woOtcCode,
       });
     } else {
-      // NEW: populate from Flex
-      // WIP Aging: use pre-calculated from XLSX if available, otherwise calc from Create Time
+      // New row logic
       let aging: number;
       if (format === 'xlsx' && flexRow.wipAgingRaw > 0) {
         aging = flexRow.wipAgingRaw;
@@ -183,55 +232,44 @@ export function processCallPlan(
         aging = calcAging(flexRow.createTime, reportDate);
       }
 
-      // Location: use Customer City (operator refines to area later in the app)
-      const location = flexRow.customerCity;
-
-      // Current Status-TAT: leave BLANK for new rows
-      // (verified against real data — expected output has blank TAT for new entries,
-      //  because the operator fills it manually during triage)
-      const currentStatusTAT = '';
-
-      // Contact: use phone from CSV, or blank if XLSX (operator fills in app)
-      const contactNo = cleanPhone(flexRow.customerPhoneNo);
-
       newRows.push({
-        month: '',
+        month: reportDate.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(' ', '-'),
         ticketNo: flexRow.ticketNo,
+        woOtcCode: flexRow.woOtcCode,
         caseId: flexRow.caseId,
         product: flexRow.productName,
         wipAging: aging,
-        location,
+        location: flexRow.workLocation || flexRow.customerCity,
         segment: mapSegment(flexRow.woOtcCode, flexRow.businessSegment),
         hpOwner: flexRow.hpOwner,
         flexStatus: flexRow.flexStatus,
         wipChanged: 'New',
-        morningStatus: '',
+        morningStatus: 'Actionable', // Default for new rows
         eveningStatus: '',
-        currentStatusTAT,
+        currentStatusTAT: '',
         engg: '',
-        contactNo,
+        contactNo: cleanPhone(flexRow.customerPhoneNo),
         parts: '',
         classification: 'NEW',
       });
     }
   }
 
-  // Check yesterday's WOs not in Flex → DROPPED
+  // Identify Dropped (Closed)
   for (const [ticketNo, row] of rtplMap) {
     if (!flexMap.has(ticketNo)) {
       dropped.push({ ...row, classification: 'DROPPED' });
     }
   }
 
-  // STEP 5: Sort — WIP Aging descending within each section
-  // When aging is equal, maintain insertion order (JS sort is stable)
+  // Sort by aging desc
   pending.sort((a, b) => b.wipAging - a.wipAging);
   newRows.sort((a, b) => b.wipAging - a.wipAging);
   dropped.sort((a, b) => b.wipAging - a.wipAging);
 
   const all = [...pending, ...newRows];
 
-  // STEP 6: Calculate advanced metrics
+  // Calculate Metrics
   let tradeCount = 0;
   let actionableCount = 0;
   let toScheduleCount = 0;
@@ -242,13 +280,13 @@ export function processCallPlan(
 
   for (const row of all) {
     if (row.segment.toLowerCase() === 'trade') tradeCount++;
-    const ms = row.morningStatus.toLowerCase();
+    const ms = row.morningStatus.toLowerCase().trim();
     if (ms === 'actionable') actionableCount++;
     if (ms === 'to be scheduled') toScheduleCount++;
     if (ms === 'ssc pending') sscPendingCount++;
-    if (ms === 'elevate/tech support') techSupportCount++;
+    if (ms.includes('elevate') || ms.includes('tech support')) techSupportCount++;
     if (ms === 'to be yank') toYankCount++;
-    if (row.engg && row.engg.trim() !== '') enggSet.add(row.engg.trim());
+    if (row.engg && row.engg.trim() !== '') enggSet.add(row.engg.trim().toLowerCase());
   }
 
   return {
@@ -275,21 +313,26 @@ export function processCallPlan(
   };
 }
 
-// ── Build summary table for Excel (matching the user's 18-metric image) ──
+// Summary builder (18 Metrics)
 export function buildSummaryTable(rows: ClassifiedRow[], engineersCount: number): string[][] {
   const outputRows = rows.filter(r => r.classification !== 'DROPPED');
+  const activeEnggs = new Set(outputRows.map(r => r.engg).filter(e => e && e.trim() !== '').map(e => e.toLowerCase().trim()));
   
-  // Calculate all 18 metrics (consistent with ReviewView logic)
-  const enggPresentCount = new Set(outputRows.map(r => r.engg).filter(e => e && e.trim() !== '')).size;
   const openCallsCount = outputRows.length;
   const actionableCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'actionable').length;
   const plannedCallsCount = outputRows.filter(r => r.engg && r.engg.trim() !== '').length;
   const closedCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'closed').length;
   const enggOnsiteCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'engg onsite').length;
   const toScheduleCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'to be scheduled').length;
-  const cxRescheduleCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'cx reschedule' || r.morningStatus.toLowerCase() === 'cx pending').length;
+  const cxRescheduleCount = outputRows.filter(r => {
+    const ms = r.morningStatus.toLowerCase();
+    return ms === 'cx reschedule' || ms === 'cx pending';
+  }).length;
   const sscPendingCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'ssc pending').length;
-  const techSupportCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'elevate/tech support').length;
+  const techSupportCount = outputRows.filter(r => {
+    const ms = r.morningStatus.toLowerCase();
+    return ms.includes('elevate') || ms.includes('tech support');
+  }).length;
   const observationCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'under observation').length;
   const toYankCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'to be yank').length;
   const closedCancelledCount = outputRows.filter(r => r.morningStatus.toLowerCase() === 'closed cancelled').length;
@@ -298,10 +341,10 @@ export function buildSummaryTable(rows: ClassifiedRow[], engineersCount: number)
   const newCallsCount = outputRows.filter(r => r.classification === 'NEW').length;
   const tradeCount = outputRows.filter(r => r.segment.toLowerCase() === 'trade').length;
 
-  const table: string[][] = [
+  return [
     ['S.No', 'Description', 'Count'],
     ['1', 'Engineer Count', String(engineersCount)],
-    ['2', 'No.of Engg Presents', String(enggPresentCount)],
+    ['2', 'No.of Engg Presents', String(activeEnggs.size)],
     ['3', 'Open Calls', String(openCallsCount)],
     ['4', 'Actionable Calls', String(actionableCount)],
     ['5', 'Planned Calls', String(plannedCallsCount)],
@@ -319,28 +362,22 @@ export function buildSummaryTable(rows: ClassifiedRow[], engineersCount: number)
     ['17', 'New calls', String(newCallsCount > 0 ? newCallsCount : '')],
     ['18', 'Trade Open Calls', String(tradeCount)],
   ];
-
-  return table;
 }
 
-// ── Build engineer breakdown for Excel ──
 export function buildEngineerBreakdown(rows: ClassifiedRow[]): string[][] {
   const outputRows = rows.filter(r => r.classification !== 'DROPPED');
   const engCounts = new Map<string, number>();
-
   for (const row of outputRows) {
-    if (row.engg) {
-      engCounts.set(row.engg.trim(), (engCounts.get(row.engg.trim()) ?? 0) + 1);
+    if (row.engg && row.engg.trim() !== '') {
+      const name = row.engg.trim();
+      engCounts.set(name, (engCounts.get(name) ?? 0) + 1);
     }
   }
-
   const sorted = [...engCounts.entries()].sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0) return [];
-
   const result: string[][] = [['Engineer', 'Allocated Calls']];
   for (const [eng, count] of sorted) {
     result.push([eng, String(count)]);
   }
-
   return result;
 }

@@ -2,6 +2,7 @@
 export interface CallPlanRow {
   month: string;         // Date string or blank
   ticketNo: string;      // WO-XXXXXXXXX
+  woOtcCode: string;     // Added WO OTC Code
   caseId: string;
   product: string;
   wipAging: number;
@@ -44,10 +45,10 @@ export interface FlexRow {
 }
 
 export interface ProcessingResult {
+  all: ClassifiedRow[];
   pending: ClassifiedRow[];
   new: ClassifiedRow[];
   dropped: ClassifiedRow[];
-  all: ClassifiedRow[];
   metrics: {
     flexTotal: number;
     flexFiltered: number;
@@ -66,10 +67,10 @@ export interface ProcessingResult {
   };
 }
 
-export type AppStep = 'upload' | 'review' | 'export';
+export type AppStep = 'login' | 'upload' | 'review' | 'export';
 
 export const COLUMNS = [
-  'Month', 'Ticket No', 'Case Id', 'Product', 'WIP Aging',
+  'Month', 'Ticket No', 'Case Id', 'WO OTC Code', 'Product', 'WIP Aging',
   'Location', 'Segment', 'HP Owner', 'Flex Status', 
   'Morning Report', 'Evening Report',
   'Current Status-TAT', 'Engg.', 'Contact no.', 'Parts', 'WIP Changed'
@@ -86,16 +87,7 @@ export const MORNING_STATUS_OPTIONS = [
   'Under observation',
   'to be yank',
   'Closed',
-  'Closed cancelled',
-  'additional part',
-  'request to cancel',
-  'need to cancel',
-  'Part Pending',
-  'CRT Pending',
-  'Cx pending',
-  'visit quote to Customer',
-  'Visit Estimate',
-  'Manual Part',
+  'Closed cancelled'
 ];
 
 export const DEFAULT_ENGINEERS = [

@@ -1,10 +1,10 @@
 import { useStore } from './store/useStore';
-import UploadView from './components/UploadView';
 import ReviewView from './components/ReviewView';
+import LoginView from './components/LoginView';
 import { Activity } from 'lucide-react';
 
 function App() {
-  const { step } = useStore();
+  const { step, isLoggedIn } = useStore();
 
   return (
     <div className="min-h-screen text-gray-100 font-sans pb-12">
@@ -15,26 +15,28 @@ function App() {
         <div className="absolute bottom-[-20%] left-[20%] w-[40%] h-[40%] bg-green-500/5 blur-[100px] rounded-full isolate" />
       </div>
 
-      {/* Global Navbar */}
-      <nav className="relative z-10 glass-panel border-x-0 border-t-0 border-b-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Activity className="h-6 w-6 text-blue-400" />
+      {/* Global Navbar - Only visible when logged in */}
+      {isLoggedIn && (
+        <nav className="relative z-10 glass-panel border-x-0 border-t-0 border-b-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Activity className="h-6 w-6 text-blue-400" />
+                </div>
+                <span className="font-semibold text-xl tracking-tight bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">
+                  Renderways Call Plan Generator
+                </span>
               </div>
-              <span className="font-semibold text-xl tracking-tight bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">
-                Renderways Call Plan Generator
-              </span>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        {step === 'upload' && <UploadView />}
+        {step === 'login' && <LoginView />}
         {step === 'review' && <ReviewView />}
-        {step === 'export' && <ReviewView />} {/* Render review view, actions are there */}
+        {step === 'export' && <ReviewView />}
       </main>
     </div>
   );
