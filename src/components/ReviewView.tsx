@@ -1,27 +1,28 @@
 import { useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import DataTable from './DataTable';
-import { 
-  Download, FileDown, ArrowLeft, RefreshCw, AlertCircle, Sparkles, 
-  UploadCloud, CheckCircle, ArrowRight, PlusCircle, X 
+import {
+  Download, FileDown, ArrowLeft, RefreshCw, AlertCircle, Sparkles,
+  UploadCloud, CheckCircle, ArrowRight, PlusCircle, X, History
 } from 'lucide-react';
-import { 
-  exportSummaryXLSX, exportCallPlanXLSX, 
-  parseCSV, parseXLSX, detectCities, findOpenCallSheet 
+import {
+  exportSummaryXLSX, exportCallPlanXLSX,
+  parseCSV, parseXLSX, detectCities, findOpenCallSheet
 } from '../lib/fileIO';
 import { processCallPlan } from '../lib/engine';
 import type { ClassifiedRow } from '../lib/types';
 import { MORNING_STATUS_OPTIONS } from '../lib/types';
+import { uploadFile, processCallPlan as apiProcessCallPlan, exportCallPlan as apiExportCallPlan, listFiles, type ApiRow, type FileListItem } from '../api/client';
 
 export default function ReviewView() {
-  const { 
-    result, 
-    rows, 
-    droppedRows, 
-    activeTab, 
-    setActiveTab, 
-    reset, 
-    selectedCity, 
+  const {
+    result,
+    rows,
+    droppedRows,
+    activeTab,
+    setActiveTab,
+    reset,
+    selectedCity,
     reportDate,
     engineers,
     setFlexData,
@@ -34,7 +35,8 @@ export default function ReviewView() {
     setResult,
     setRows,
     setDroppedRows,
-    addRow
+    addRow,
+    username
   } = useStore();
 
   const [flexFile, setFlexFile] = useState<File | null>(null);
@@ -43,6 +45,12 @@ export default function ReviewView() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImport, setShowImport] = useState(!result && rows.length === 0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Backend file IDs (stored after upload)
+  const [flexFileId, setFlexFileId] = useState<number | null>(null);
+  const [yestFileId, setYestFileId] = useState<number | null>(null);
+  const [uploadHistory, setUploadHistory] = useState<FileListItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Expanded Manual Row State - All 17 fields (including woOtcCode)
   const [newRow, setNewRow] = useState<Partial<ClassifiedRow>>({
@@ -73,6 +81,7 @@ export default function ReviewView() {
     if (!file) return;
     setError(null);
     try {
+      // Parse locally for preview & city detection
       let data: Record<string, unknown>[];
       if (file.name.endsWith('.csv')) {
         data = await parseCSV(file);
@@ -91,6 +100,11 @@ export default function ReviewView() {
       const cities = detectCities(data);
       setFlexData(data, cities);
       setFlexFile(file);
+
+      // Upload to backend for DB storage (fire-and-forget, non-blocking)
+      uploadFile(file, 'flex_wip', selectedCity, reportDate, username)
+        .then(resp => setFlexFileId(resp.file.id))
+        .catch(() => console.warn('Backend upload failed for flex file'));
     } catch (err) {
       setError('Failed to parse Flex file.');
     }
@@ -106,6 +120,11 @@ export default function ReviewView() {
       if (!sheetName) throw new Error('Could not find "Open Call" sheet.');
       setYesterdayData(parsed.data[sheetName]);
       setYestFile(file);
+
+      // Upload to backend for DB storage (fire-and-forget, non-blocking)
+      uploadFile(file, 'call_plan', selectedCity, reportDate, username)
+        .then(resp => setYestFileId(resp.file.id))
+        .catch(() => console.warn('Backend upload failed for yesterday file'));
     } catch (err: any) {
       setError(err.message || 'Failed to parse Yesterday\'s file.');
     }
@@ -114,6 +133,8 @@ export default function ReviewView() {
   const handleGenerate = () => {
     if (!flexData || !yesterdayData) return;
     setIsProcessing(true);
+
+    // Always use local processing first (reliable, no backend dependency)
     setTimeout(() => {
       try {
         const res = processCallPlan(flexData, yesterdayData, selectedCity, new Date(reportDate));
@@ -138,11 +159,49 @@ export default function ReviewView() {
     }
   };
 
-  const handleExportCallPlan = () => {
+  const handleExportCallPlan = async () => {
     try {
+      // Local export (immediate download)
       exportCallPlanXLSX(rows, droppedRows, selectedCity, reportDate);
+
+      // Also save to backend DB
+      try {
+        const apiRows: ApiRow[] = rows.map(r => ({
+          ticket_no: r.ticketNo,
+          case_id: r.caseId,
+          product: r.product,
+          wip_aging: r.wipAging,
+          location: r.location,
+          segment: r.segment,
+          classification: r.classification,
+          morning_status: r.morningStatus,
+          evening_status: r.eveningStatus,
+          engineer: r.engg,
+          contact_no: r.contactNo,
+          parts: r.parts,
+          month: r.month,
+          wo_otc_code: r.woOtcCode,
+          hp_owner: r.hpOwner,
+          flex_status: r.flexStatus,
+          wip_changed: r.wipChanged,
+          current_status_tat: r.currentStatusTAT,
+        }));
+        await apiExportCallPlan(apiRows, selectedCity, reportDate);
+      } catch {
+        console.warn('Backend export save failed, local file was still downloaded');
+      }
     } catch (e) {
       alert("Call Plan Export failed.");
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const files = await listFiles(undefined, undefined, username);
+      setUploadHistory(files);
+      setShowHistory(true);
+    } catch {
+      console.warn('Could not load history from backend');
     }
   };
 
@@ -348,14 +407,21 @@ export default function ReviewView() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button 
+              <button
+                onClick={loadHistory}
+                className="flex items-center gap-2 text-sm px-4 py-2 border border-gray-600/30 rounded-lg hover:bg-gray-700/30 transition-all text-gray-400 font-medium"
+              >
+                <History className="h-4 w-4" /> History
+              </button>
+
+              <button
                 onClick={handleExportSummary}
                 className="flex items-center gap-2 text-sm px-4 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all text-blue-400 font-medium"
               >
                 <Download className="h-4 w-4" /> Download Counts
               </button>
-              
-              <button 
+
+              <button
                 onClick={handleExportCallPlan}
                 className="flex items-center gap-2 text-sm px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium tracking-wide shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all"
               >
@@ -421,6 +487,47 @@ export default function ReviewView() {
             </div>
           </div>
         </>
+      )}
+
+      {/* UPLOAD HISTORY MODAL */}
+      {showHistory && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="glass-panel w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl border border-white/10 flex flex-col">
+            <div className="p-5 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                <History className="h-5 w-5 text-blue-400" />
+                Upload History (Database)
+              </h3>
+              <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-white/5 rounded-full text-gray-500 hover:text-white transition-all">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-2">
+              {uploadHistory.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-8">No files stored in database yet. Upload files and they will be saved automatically.</p>
+              ) : (
+                uploadHistory.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700/30">
+                    <div>
+                      <p className="text-sm font-medium text-gray-200">{f.original_name}</p>
+                      <p className="text-xs text-gray-500">
+                        {f.file_type === 'flex_wip' ? 'Flex WIP' : f.file_type === 'call_plan' ? 'Call Plan' : 'Generated'}
+                        {' '}&middot; {f.row_count} rows &middot; {f.city} &middot; {new Date(f.uploaded_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${
+                      f.file_type === 'flex_wip' ? 'bg-blue-500/10 text-blue-400' :
+                      f.file_type === 'call_plan' ? 'bg-amber-500/10 text-amber-400' :
+                      'bg-green-500/10 text-green-400'
+                    }`}>
+                      {f.file_type.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MANUAL ENTRY MODAL - COMPREHENSIVE FORM */}

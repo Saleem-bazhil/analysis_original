@@ -10,7 +10,10 @@ interface AppState {
 
   // Auth state
   isLoggedIn: boolean;
+  username: string;
   setLoggedIn: (isLoggedIn: boolean) => void;
+  setUsername: (username: string) => void;
+  logout: () => void;
 
   // Upload state
   flexData: Record<string, unknown>[] | null;
@@ -54,7 +57,23 @@ export const useStore = create<AppState>((set) => ({
   setStep: (step) => set({ step }),
 
   isLoggedIn: false,
+  username: '',
   setLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
+  setUsername: (username) => set({ username }),
+  logout: () => set({
+    isLoggedIn: false,
+    username: '',
+    step: 'login',
+    flexData: null,
+    yesterdayData: null,
+    availableCities: [],
+    selectedCity: 'all',
+    reportDate: today,
+    result: null,
+    rows: [],
+    droppedRows: [],
+    activeTab: 'all',
+  }),
 
   flexData: null,
   yesterdayData: null,

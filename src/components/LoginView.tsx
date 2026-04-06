@@ -2,8 +2,15 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Lock, User, LogIn, Activity, AlertCircle } from 'lucide-react';
 
+// Hardcoded users - add/remove users here
+const VALID_USERS: Record<string, string> = {
+  admin: 'admin',
+  saleem: 'saleem123',
+  operator: 'operator123',
+};
+
 const LoginView: React.FC = () => {
-  const { setLoggedIn, setStep } = useStore();
+  const { setLoggedIn, setStep, setUsername: saveUsername } = useStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +23,8 @@ const LoginView: React.FC = () => {
 
     // Simulate login
     setTimeout(() => {
-      if (username === 'admin' && password === 'admin') {
+      if (VALID_USERS[username] && VALID_USERS[username] === password) {
+        saveUsername(username);
         setLoggedIn(true);
         setStep('review');
       } else {

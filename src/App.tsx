@@ -1,10 +1,10 @@
 import { useStore } from './store/useStore';
 import ReviewView from './components/ReviewView';
 import LoginView from './components/LoginView';
-import { Activity } from 'lucide-react';
+import { Activity, LogOut, User } from 'lucide-react';
 
 function App() {
-  const { step, isLoggedIn } = useStore();
+  const { step, isLoggedIn, username, logout } = useStore();
 
   return (
     <div className="min-h-screen text-gray-100 font-sans pb-12">
@@ -27,6 +27,20 @@ function App() {
                 <span className="font-semibold text-xl tracking-tight bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">
                   Renderways Call Plan Generator
                 </span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/60 rounded-lg border border-gray-700/50">
+                  <User className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-medium text-gray-300 capitalize">{username}</span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-all"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
               </div>
             </div>
           </div>
