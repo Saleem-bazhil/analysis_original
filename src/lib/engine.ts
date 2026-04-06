@@ -345,7 +345,7 @@ export function buildSummaryTable(rows: ClassifiedRow[], engineersCount: number)
     ['S.No', 'Description', 'Count'],
     ['1', 'Engineer Count', String(engineersCount)],
     ['2', 'No.of Engg Presents', String(activeEnggs.size)],
-    ['3', 'Open Calls', String(openCallsCount)],
+    ['3', 'WIP Call', String(openCallsCount)],
     ['4', 'Actionable Calls', String(actionableCount)],
     ['5', 'Planned Calls', String(plannedCallsCount)],
     ['6', 'Closed Calls', String(closedCount > 0 ? closedCount : '')],
@@ -360,7 +360,7 @@ export function buildSummaryTable(rows: ClassifiedRow[], engineersCount: number)
     ['15', 'Add.Part ordered', String(partOrderedCount > 0 ? partOrderedCount : '')],
     ['16', 'To be Cancel', String(toCancelCount)],
     ['17', 'New calls', String(newCallsCount > 0 ? newCallsCount : '')],
-    ['18', 'Trade Open Calls', String(tradeCount)],
+    ['18', 'Trade WIP Call', String(tradeCount)],
   ];
 }
 
