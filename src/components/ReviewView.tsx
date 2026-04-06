@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import DataTable from './DataTable';
 import {
   Download, FileDown, AlertCircle, Sparkles,
-  UploadCloud, CheckCircle, X, History
+  UploadCloud, CheckCircle, PlusCircle, X, History
 } from 'lucide-react';
 import {
   exportSummaryXLSX, exportCallPlanXLSX,
@@ -311,40 +311,93 @@ export default function ReviewView() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
-          <div className="glass-panel w-full max-w-5xl relative z-60 max-h-[90vh] overflow-y-auto p-8 rounded-[2rem] border border-gray-700/50 shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Manual Entry</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/5 rounded-full"><X className="h-6 w-6 text-gray-400" /></button>
-            </div>
-            <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Ticket No *</label><input type="text" value={newRow.ticketNo} onChange={(e) => setNewRow({...newRow, ticketNo: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Classification</label><select value={newRow.classification} onChange={(e) => setNewRow({...newRow, classification: e.target.value as any})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl">{['NEW', 'PENDING', 'DROPPED'].map(o => <option key={o} value={o}>{o === 'DROPPED' ? 'CLOSED OTB' : o}</option>)}</select></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">OTC Code</label><input type="text" value={newRow.woOtcCode} onChange={(e) => setNewRow({...newRow, woOtcCode: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" /></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Case ID</label><input type="text" value={newRow.caseId} onChange={(e) => setNewRow({...newRow, caseId: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" /></div>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-2xl" onClick={() => setIsModalOpen(false)} />
+          <div className="glass-panel w-full max-w-4xl relative z-60 max-h-[95vh] overflow-y-auto rounded-[3rem] border border-white/10 shadow-[0_64px_128px_-32px_rgba(0,0,0,0.8)] flex flex-col bg-gray-950/40 translate-y-0 animate-in fade-in zoom-in-95 duration-500">
+            <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 px-10 py-8 flex items-center justify-between border-b border-white/10 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 -rotate-45 translate-x-32 -translate-y-32 blur-3xl pointer-events-none" />
+              <div className="flex items-center gap-5">
+                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
+                  <PlusCircle className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none mb-1">New Manual Entry</h2>
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em]">Operational Record Registration</p>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {['product', 'location', 'hpOwner', 'flexStatus'].map(k => (
-                  <div key={k} className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase">{k}</label>
-                    <input type="text" value={(newRow as any)[k]} onChange={(e) => setNewRow({...newRow, [k]: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" />
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-all hover:rotate-90"><X className="h-6 w-6 text-white/80" /></button>
+            </div>
+
+            <div className="p-10 space-y-12 overflow-y-auto custom-scrollbar">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-px flex-1 bg-blue-500/20" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Identification & Classification</span>
+                  <div className="h-px w-8 bg-blue-500/20" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Ticket No *</label><input type="text" placeholder="TN-XXXXX" value={newRow.ticketNo} onChange={(e) => setNewRow({...newRow, ticketNo: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-100" /></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Classification</label><select value={newRow.classification} onChange={(e) => setNewRow({...newRow, classification: e.target.value as any})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-100 shadow-xl">{['NEW', 'PENDING', 'DROPPED'].map(o => <option key={o} value={o} className="bg-gray-900">{o === 'DROPPED' ? 'CLOSED OTB' : o}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">OTC Code</label><input type="text" placeholder="OTC-00" value={newRow.woOtcCode} onChange={(e) => setNewRow({...newRow, woOtcCode: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-100" /></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Case ID</label><input type="text" placeholder="C-XXXXXX" value={newRow.caseId} onChange={(e) => setNewRow({...newRow, caseId: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-100" /></div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-px flex-1 bg-amber-500/20" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Logistics & Context</span>
+                  <div className="h-px w-8 bg-amber-500/20" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {['product', 'location', 'hpOwner'].map(k => (
+                    <div key={k} className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{k}</label>
+                      <input type="text" placeholder={`Enter ${k}...`} value={(newRow as any)[k]} onChange={(e) => setNewRow({...newRow, [k]: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all font-bold text-gray-100 placeholder:text-gray-700" />
+                    </div>
+                  ))}
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Segment</label><select value={newRow.segment} onChange={(e) => setNewRow({...newRow, segment: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all font-bold text-gray-100">{['Trade', 'Consumer', 'Corporate'].map(o => <option key={o} value={o} className="bg-gray-900">{o}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">WIP Aging</label><input type="number" value={newRow.wipAging} onChange={(e) => setNewRow({...newRow, wipAging: parseInt(e.target.value) || 0})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all font-bold text-gray-100" /></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Flex Status</label><input type="text" placeholder="Current Flex Status..." value={newRow.flexStatus} onChange={(e) => setNewRow({...newRow, flexStatus: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all font-bold text-gray-100 placeholder:text-gray-700" /></div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-px flex-1 bg-emerald-500/20" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">Assignment & Execution</span>
+                  <div className="h-px w-8 bg-emerald-500/20" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 flex items-center gap-2">Engineer <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /></label>
+                    <input type="text" list="prev-engg" placeholder="Select Engineer..." value={newRow.engg} onChange={(e) => setNewRow({...newRow, engg: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold text-gray-100 placeholder:text-gray-700" />
+                    <datalist id="prev-engg">{engineers.map(e => <option key={e} value={e} />)}</datalist>
                   </div>
-                ))}
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Segment</label><select value={newRow.segment} onChange={(e) => setNewRow({...newRow, segment: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl">{['Trade', 'Consumer', 'Corporate'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">WIP Aging</label><input type="number" value={newRow.wipAging} onChange={(e) => setNewRow({...newRow, wipAging: parseInt(e.target.value) || 0})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" /></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Morning Status</label><select value={newRow.morningStatus} onChange={(e) => setNewRow({...newRow, morningStatus: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold text-gray-100">{MORNING_STATUS_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-gray-900">{opt}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Contact No</label><input type="text" placeholder="+91 XXXXX XXXXX" value={newRow.contactNo} onChange={(e) => setNewRow({...newRow, contactNo: e.target.value})} className="w-full glass-input bg-gray-950/50 border-white/5 text-sm py-3 px-4 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold text-gray-100 placeholder:text-gray-700" /></div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Engineer</label><input type="text" list="prev-engg" value={newRow.engg} onChange={(e) => setNewRow({...newRow, engg: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" /><datalist id="prev-engg">{engineers.map(e => <option key={e} value={e} />)}</datalist></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Morning Status</label><select value={newRow.morningStatus} onChange={(e) => setNewRow({...newRow, morningStatus: e.target.value})} className="w-full glass-input bg-gray-900 border-amber-500/20 text-sm py-2 px-3 rounded-xl">{MORNING_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-                <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500">Contact</label><input type="text" value={newRow.contactNo} onChange={(e) => setNewRow({...newRow, contactNo: e.target.value})} className="w-full glass-input bg-gray-900 border-gray-800 text-sm py-2 px-3 rounded-xl" /></div>
-              </div>
-              <div className="space-y-1">
-                 <label className="text-[10px] font-bold text-gray-500 uppercase">Remarks / Parts</label>
-                 <textarea rows={3} value={newRow.parts} onChange={(e) => setNewRow({...newRow, parts: e.target.value})} className="w-full p-4 glass-input bg-gray-900 border-gray-800 rounded-xl text-sm resize-none" />
+
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Remarks / Spares Management</label>
+                 <textarea rows={4} placeholder="Add detailed technical remarks or parts info here..." value={newRow.parts} onChange={(e) => setNewRow({...newRow, parts: e.target.value})} className="w-full p-6 glass-input bg-gray-950/50 border-white/5 rounded-3xl text-sm resize-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-gray-300 placeholder:text-gray-700 leading-relaxed" />
               </div>
             </div>
-            <div className="mt-8 flex justify-end gap-4"><button onClick={handleAddManualRow} className="px-10 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20">Save Record</button></div>
+
+            <div className="px-10 py-8 bg-gray-950/50 border-t border-white/5 flex items-center justify-between">
+              <button 
+                onClick={() => setIsModalOpen(false)} 
+                className="px-8 py-3.5 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-all"
+              >
+                Cancel Entry
+              </button>
+              <button 
+                onClick={handleAddManualRow} 
+                className="px-12 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-[0_20px_40px_-10px_rgba(37,99,235,0.4)] active:scale-95"
+              >
+                Commit & Register
+              </button>
+            </div>
           </div>
         </div>
       )}
