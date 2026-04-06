@@ -141,7 +141,7 @@ export default function ReviewView() {
 
   const tableMetrics = [
     { label: 'Engineer Count', value: engineers.filter(e => e.trim() !== '').length },
-    { label: 'No.of Engg Presents', value: new Set(rows.map(r => r.engg).filter(e => e && e.trim() !== '')).size },
+    { label: 'No.of Engg Presents', value: new Set(rows.filter(r => r.morningStatus.toLowerCase() === 'actionable').map(r => r.engg).filter(e => e && e.trim() !== '')).size },
     { label: 'Open Calls', value: rows.length },
     { label: 'Actionable Calls', value: rows.filter(r => r.morningStatus.toLowerCase() === 'actionable').length },
     { label: 'Planned Calls', value: rows.filter(r => r.engg && r.engg.trim() !== '').length },
@@ -160,7 +160,12 @@ export default function ReviewView() {
     { label: 'Trade Open Calls', value: rows.filter(r => r.segment.toLowerCase() === 'trade').length },
   ];
 
-  const sortedEnggs = Object.entries(rows.reduce((acc, row) => { if (row.engg && row.engg.trim() !== '') acc[row.engg] = (acc[row.engg] || 0) + 1; return acc; }, {} as Record<string, number>)).sort((a, b) => b[1] - a[1]);
+  const sortedEnggs = Object.entries(rows.reduce((acc, row) => { 
+    if (row.engg && row.engg.trim() !== '' && row.morningStatus.toLowerCase() === 'actionable') {
+      acc[row.engg] = (acc[row.engg] || 0) + 1;
+    }
+    return acc; 
+  }, {} as Record<string, number>)).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="w-full flex-col space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
