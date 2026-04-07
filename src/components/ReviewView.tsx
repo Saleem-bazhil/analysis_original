@@ -44,6 +44,7 @@ export default function ReviewView() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImport, setShowImport] = useState(!result && rows.length === 0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [uploadHistory, setUploadHistory] = useState<FileListItem[]>([]);
   
   // Interactivity State
@@ -120,7 +121,11 @@ export default function ReviewView() {
   };
 
   const loadHistory = async () => {
-    try { setUploadHistory(await listFiles(undefined, undefined, username)); } catch {}
+    try { 
+      const history = await listFiles(undefined, undefined, username);
+      setUploadHistory(history); 
+      setIsHistoryOpen(true);
+    } catch {}
   };
 
   const handleAddManualRow = () => {
@@ -194,7 +199,15 @@ export default function ReviewView() {
             <div className="flex flex-col md:flex-row gap-4 items-end">
               <div className="flex-1 space-y-1 w-full"><label className="text-[10px] font-bold uppercase text-gray-500">City</label><select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="w-full glass-input bg-gray-900 text-xs py-2">{availableCities.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
               <div className="flex-1 space-y-1 w-full"><label className="text-[10px] font-bold uppercase text-gray-500">Date</label><input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="w-full glass-input bg-gray-900 text-xs py-2" /></div>
-              <button onClick={handleGenerate} className="flex-1 h-[34px] bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs shadow-lg shadow-blue-900/20">Run Analysis</button>
+              <button 
+                onClick={handleGenerate} 
+                disabled={isProcessing}
+                className={`flex-1 h-[34px] flex items-center justify-center gap-2 rounded-lg font-bold text-xs transition-all ${isProcessing ? 'bg-blue-600/50 cursor-not-allowed text-white/50' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20'}`}
+              >
+                {isProcessing ? (
+                  <><div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analyzing...</>
+                ) : 'Run Analysis'}
+              </button>
             </div>
           </div>
         )}
@@ -262,7 +275,7 @@ export default function ReviewView() {
              <div className="flex bg-gray-900 border-b border-gray-700/80">
                {(['all', 'actionable', 'planned', 'trade', 'pending', 'new', 'dropped'] as const).map(tab => (
                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-3 text-[11px] font-black uppercase tracking-widest relative ${activeTab === tab ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-                   {tab === 'all' ? 'All Open Call' : 
+                   {tab === 'all' ? `${selectedCity} Open Calls` : 
                     tab === 'actionable' ? 'Actionable Call' :
                     tab === 'planned' ? 'Planned Call' :
                     tab === 'trade' ? 'Trade Call' :
@@ -402,6 +415,48 @@ export default function ReviewView() {
               >
                 Commit & Register
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isHistoryOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setIsHistoryOpen(false)} />
+          <div className="glass-panel w-full max-w-2xl relative z-20 max-h-[85vh] overflow-hidden rounded-[2.5rem] border border-white/10 shadow-2xl flex flex-col bg-gray-950/40 animate-in zoom-in-95 duration-500">
+            <div className="bg-gradient-to-br from-gray-900 to-slate-900 px-8 py-6 flex items-center justify-between border-b border-white/5">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20"><History className="h-5 w-5 text-blue-400" /></div>
+                <div><h3 className="text-lg font-black text-white uppercase italic tracking-tighter leading-none mb-1">Upload History</h3><p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold">Past Operational Records</p></div>
+              </div>
+              <button onClick={() => setIsHistoryOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="h-5 w-5 text-gray-400" /></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {uploadHistory.length === 0 ? (
+                <div className="py-20 text-center space-y-3 opacity-50"><History className="h-12 w-12 text-gray-700 mx-auto" /><p className="text-sm font-bold text-gray-600 uppercase tracking-widest">No history found</p></div>
+              ) : (
+                uploadHistory.map((file, idx) => (
+                  <div key={file.id} className="group p-5 bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 rounded-2xl transition-all duration-300 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-xl ${file.file_type === 'flex_wip' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                        {file.file_type === 'flex_wip' ? <UploadCloud className="h-5 w-5" /> : <FileDown className="h-5 w-5" />}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-200 mb-1 group-hover:text-white transition-colors">{file.original_name}</h4>
+                        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-gray-600">
+                          <span className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> {file.city}</span>
+                          <span>•</span>
+                          <span>{file.report_date || new Date(file.uploaded_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-black text-gray-400 mb-1">{(file.file_size / 1024).toFixed(1)} KB</p>
+                      <p className="text-[10px] font-bold text-blue-400/60 uppercase">{file.row_count} Rows</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
